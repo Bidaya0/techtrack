@@ -1,11 +1,15 @@
 {
   "dependencies": {
     "@inquirer/rawlist": "^1.2.5",
+    "@kvs/types": "^2.1.4",
     "@octokit/request": "^8.1.1",
+    "@types/lunr": "^2.3.4",
     "cli-table": "^0.3.11",
     "commander": "^11.0.0",
     "commander-js": "^0.0.1-security",
     "inquirer": "^8.2.5",
+    "kvs": "^2.3.0",
+    "lunr": "^2.3.9",
     "octokit": "^3.0.0",
     "tslint": "^6.1.3"
   },

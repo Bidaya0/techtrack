@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { Command } from "commander";
 import Table from "cli-table";
 import inquirer from "inquirer";
-
+import lunr from "lunr";
 // import inquirer from "inquirer";
 // var Table = require('cli-table');
 
@@ -32,7 +32,7 @@ const collectfromgithub = async (token: string) => {
 
   // Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
   let page = 1;
-  let { data } =
+  var { data } =
     await octokit.rest.activity.listReposStarredByAuthenticatedUser({
       page,
       per_page: 100,
@@ -45,7 +45,7 @@ const collectfromgithub = async (token: string) => {
       break;
     }
     page++;
-    let { data } =
+    var { data } =
       await octokit.rest.activity.listReposStarredByAuthenticatedUser({
         page,
         per_page: 100,
@@ -123,26 +123,30 @@ program
     show_rader_list();
   });
 
+
+const saveraderfile = (to_file_path: string, data: any) => {
+  // 保存已修改的数据
+  fs.writeFileSync(to_file_path, JSON.stringify(data), {
+    encoding: "utf8",
+    c: "w",
+  });
+  console.log("\n");
+  console.log("save file exit");
+  // 退出进程
+  process.exit(0);
+}
+
 // 创建一个名为 `greet` 的命令
 program
-  .command("greet")
-  .description("Greets the user.")
+  .command("update")
+  .description("update the rader item.")
   .option("-t, --to_file <file>", "The file of output.", "to_data.json")
-  .option("-f, --from_file <file>", "The file of output.", "data.json")
+  .option("-f, --from_file <file>", "The file of input.", "data.json")
+  .option("-q, --query <query>", "The query of dataframe.", "")
   .action((options) => {
-    // rawlist({
-    //   choices: [
-    //     { name: 'adopt', value: 'adopt' },
-    //     { name: 'trial', value: 'trial' },
-    //     { name: 'assess', value: 'assess' },
-    //     { name: 'hold', value: 'hold' },
-    //   ],
-    //   message: 'What is the repo ring? ',
-    // }).then((answer: string) => {
-    //   const name = answer;
-    //   console.log(`Hello, ${name}!`);
-    // })
-    fs.readFile(options.file, async (err, data) => {
+
+
+    fs.readFile(options.from_file, async (err, data) => {
       if (err) {
         console.log(err);
         return;
@@ -157,41 +161,35 @@ program
           description: string;
         },
       ] = JSON.parse(data.toString());
+      //console.log(objs)
+      const index = lunr(function() {
+        this.field("name");
+        this.ref('url');
+        objs.forEach((obj, index) => {
+          this.add(obj);
+        });
+        for (const obj of objs) {
+          this.add(
+            obj
+          )
+        }
+      });
 
-      process.on("exit", () => {
-        // 保存已修改的数据
-        fs.writeFileSync(options.to_file, JSON.stringify(objs), {
-          encoding: "utf8",
-          c: "w",
-        });
-        console.log("\n");
-        console.log("save file exit");
-        // 退出进程
-        process.exit(0);
-      });
-      process.on("SIGINT", () => {
-        // 保存已修改的数据
-        fs.writeFileSync(options.to_file, JSON.stringify(objs), {
-          encoding: "utf8",
-          c: "w",
-        });
-        console.log("\n");
-        console.log("save file exit");
-        // 退出进程
-        process.exit(0);
-      });
-      process.on("SIGTERM", () => {
-        // 保存已修改的数据
-        fs.writeFileSync(options.to_file, JSON.stringify(objs), {
-          encoding: "utf8",
-          c: "w",
-        });
-        console.log("\n");
-        console.log("save file exit");
-        // 退出进程
-        process.exit(0);
-      });
-      for (const obj of objs) {
+      process.on("exit", () => { saveraderfile(options.to_file, objs) });
+      process.on("SIGINT", () => { saveraderfile(options.to_file, objs) });
+      process.on("SIGTERM", () => { saveraderfile(options.to_file, objs) });
+
+      const results = options.query ? index.search(options.query) : []
+
+      for (const obj of objs.filter((obj) => {
+        if (options.query) {
+          return results.map((res) => { return res.ref }).indexOf(obj.url) !== -1
+        }
+        else {
+          return true;
+        }
+      }
+      )) {
         const objtable = new Table({
           head: ["name", "url", "isNew", "quadrant", "ring", "description"],
           rows: [
@@ -205,7 +203,7 @@ program
             ],
           ],
         });
-        console.log(objtable.toString());
+        console.log(objtable.toString())
         await inquirer
           .prompt([
             {
@@ -235,12 +233,6 @@ program
               type: "input",
               name: "description",
               message: "What is your description? ",
-              oncancel: async () => {
-                fs.writeFileSync(options.to_file, JSON.stringify(objs));
-                console.log("save file");
-                // 退出进程
-                process.exit(0);
-              },
             },
           ])
           .then((answers) => {
