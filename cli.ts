@@ -128,7 +128,7 @@ const saveraderfile = (to_file_path: string, data: any) => {
   // 保存已修改的数据
   fs.writeFileSync(to_file_path, JSON.stringify(data), {
     encoding: "utf8",
-    c: "w",
+  // c: "w",
   });
   console.log("\n");
   console.log("save file exit");
@@ -208,7 +208,7 @@ program
           .prompt([
             {
               type: "rawlist",
-              name: "quadrant",
+              name: "ring",
               message: "Which is better?",
               choices: ["adopt", "trial", "assess", "hold"],
             },
@@ -220,7 +220,7 @@ program
             },
             {
               type: "rawlist",
-              name: "ring",
+              name: "quadrant",
               message: "Which is better?",
               choices: [
                 "tools",
